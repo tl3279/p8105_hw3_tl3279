@@ -1,0 +1,129 @@
+---
+title: "p8105_hw3_tl3279"
+author: "Tianqi Li"
+date: "2024-10-09"
+output: github_document
+---
+
+Load all necessary packages
+```{r setup, include=FALSE}
+library(p8105.datasets)
+library(tidyverse)
+library(patchwork)
+library(dplyr)
+library(lubridate)
+library(readxl)
+library(knitr)
+```
+
+## Problem 1
+
+Load the dataset
+```{r}
+data("ny_noaa")
+```
+
+Exploration of dataset
+```{r}
+str(ny_noaa)
+ny_noaa =
+  ny_noaa|>
+  mutate(
+    tmax = as.numeric(tmax),
+    tmin = as.numeric(tmin)
+    )
+summary(ny_noaa)
+```
+The dataset consists of 7 variables with 2,595,176 observations. 
+The variables includes:
+id: Weather station ID
+date: Date of observation
+prcp: Precipitation (tenths of mm)
+snow: Snowfall (mm)
+snwd: Snow depth (mm)
+tmax: Maximum temperature (tenths of degrees C)
+tmin: Minimum temperature (tenths of degrees C)
+About half of the dataset consists of missing data for tmin and tmax which can 
+be an issue if analyze as a whole.
+
+Data cleaning
+```{r}
+ny_noaa_cleaned = 
+  ny_noaa |>
+  janitor::clean_names() |>
+  mutate(
+    year = year(date),
+    month = month(date),
+    day = day(date),
+    prcp = prcp / 10,
+    tmax = tmax / 10, 
+    tmin = tmin / 10  
+  )
+ny_noaa_cleaned |>
+  filter(!is.na(snow)) |>
+  count(snow, , sort = TRUE) |>
+  slice(1)
+```
+
+The year, month, and day variables have been creatted using the lubridate 
+package. Variables with tenth of a standard units have been divided by 10.
+For snowfall, the most commonly observed value is 0 as snowfall does not occur 
+on most days throughout the year in most locations. 
+
+Make a two-panel plot showing the average max temperature in January and in July in each station across years. Is there any observable / interpretable structure? Any outliers?
+```{r}
+ny_noaa_cleaned |>
+  filter(!is.na(tmax), month %in% c(1, 7)) |>
+  group_by(id, year, month) |>
+  summarise(mean_tmax = mean(tmax, na.rm = TRUE)) |>
+  head(10)
+```
+
+## Problem 2
+
+Load the datasets and merge them
+```{r message = FALSE}
+demo_df = 
+  read_csv("nhanes_covar.csv", na = c("NA", "", "."), skip = 4) |>
+  janitor::clean_names() |>
+  filter(age >= 21) |>
+  mutate(
+    sex = recode(sex, 
+                    `1` = "Male", 
+                    `2` = "Female"),
+    education = recode(education, 
+                       `1` = "Less than high school", 
+                       `2` = "High school equivalent", 
+                       `3` = "More than high school")
+  ) |>
+  drop_na()
+
+accel_df = 
+  read_csv("nhanes_accel.csv",na = c("NA", "", ".")) |>
+  janitor::clean_names() 
+
+merged_df = 
+  accel_df |>
+  pivot_longer(
+    cols = starts_with("min"),
+    names_to = "minutes",
+    names_prefix = "min", 
+    values_to = "min_value"
+  ) |>
+  inner_join(demo_df, by = "seqn")
+```
+
+Create the table
+```{r}
+sex_education_table = 
+  demo_df |>
+  count(sex, education) |>
+  pivot_wider(names_from = sex, values_from = n, values_fill = 0)
+sex_education_table |>
+  kable(
+    col.names = c("Education Level", "Female", "Male"),
+    caption = "Number of Men and Women by Education Category",
+    align = "c" 
+  )
+```
+
