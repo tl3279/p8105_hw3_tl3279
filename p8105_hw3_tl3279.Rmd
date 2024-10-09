@@ -71,7 +71,7 @@ For snowfall, the most commonly observed value is 0 as snowfall does not occur
 on most days throughout the year in most locations. 
 
 Make a two-panel plot showing the average max temperature in January and in July in each station across years. Is there any observable / interpretable structure? Any outliers?
-```{r}
+```{r, include = FALSE}
 ny_noaa_cleaned |>
   filter(!is.na(tmax), month %in% c(1, 7)) |>
   group_by(id, year, month) |>
@@ -88,13 +88,13 @@ demo_df =
   janitor::clean_names() |>
   filter(age >= 21) |>
   mutate(
-    sex = recode(sex, 
-                    `1` = "Male", 
-                    `2` = "Female"),
-    education = recode(education, 
-                       `1` = "Less than high school", 
-                       `2` = "High school equivalent", 
-                       `3` = "More than high school")
+    sex = case_match(sex, 
+                    1 ~ "Male", 
+                    2 ~ "Female"),
+    education = case_match(education, 
+                       1 ~ "Less than high school", 
+                       2 ~ "High school equivalent", 
+                       3 ~ "More than high school")
   ) |>
   drop_na()
 
@@ -104,26 +104,26 @@ accel_df =
 
 merged_df = 
   accel_df |>
-  pivot_longer(
-    cols = starts_with("min"),
-    names_to = "minutes",
-    names_prefix = "min", 
-    values_to = "min_value"
-  ) |>
   inner_join(demo_df, by = "seqn")
 ```
 
 Create the table
 ```{r}
-sex_education_table = 
-  demo_df |>
+sex_edu = 
+  merged_df |>
   count(sex, education) |>
-  pivot_wider(names_from = sex, values_from = n, values_fill = 0)
-sex_education_table |>
-  kable(
-    col.names = c("Education Level", "Female", "Male"),
-    caption = "Number of Men and Women by Education Category",
-    align = "c" 
-  )
+  pivot_wider(names_from = sex, values_from = n)
+
+kable(sex_edu)
 ```
+
+```{r}
+merged_df |>
+  ggplot(aes(x = age, fill = sex)) +
+  geom_density(alpha = 0.5) +
+  facet_wrap(~education) +
+  theme_minimal()
+```
+
+
 
