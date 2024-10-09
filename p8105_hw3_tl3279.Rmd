@@ -125,5 +125,19 @@ merged_df |>
   theme_minimal()
 ```
 
+```{r}
+activity_df = 
+  merged_df |>
+  mutate(total_activity = rowSums(across(starts_with("min")), na.rm = TRUE)) |>
+  select(seqn, sex, age, bmi, education, total_activity)
+
+activity_df |>
+  ggplot(aes(x = age, y = total_activity, color = sex)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(se = FALSE) +  
+  facet_grid(~education) +
+  theme_minimal()
+```
+
 
 
