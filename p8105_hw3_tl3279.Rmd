@@ -70,7 +70,6 @@ package. Variables with tenth of a standard units have been divided by 10.
 For snowfall, the most commonly observed value is 0 as snowfall does not occur 
 on most days throughout the year in most locations. 
 
-Make a two-panel plot showing the average max temperature in January and in July in each station across years. Is there any observable / interpretable structure? Any outliers?
 ```{r, include = FALSE}
 ny_noaa_cleaned |>
   filter(!is.na(tmax), month %in% c(1, 7)) |>
@@ -124,15 +123,15 @@ merged_df |>
   facet_wrap(~education) +
   theme_minimal()
 ```
-High School Equivalent:
+High School Equivalent:  
 Females: There is a noticeable peak in the 60-80 age range, indicating a higher concentration of older females in this education group.
 Males: The male distribution shows more variability, with one peak around 40-60 years and another peak at 70-80 years.
 
-Less than High School:
+Less than High School:  
 Females: The age distribution for females in this group is relatively flat, with a slight peak in the 40-60 year age range. There is also some density in the 70-80 range.
 Males: Similar to females, but with a more noticeable peak in the 60-70 year range.
 
-More than High School:
+More than High School:  
 Females: The distribution of females shows a peak in the 40-60 year range, with a gradual decline after 60 years.
 Males: The distribution is spread more evenly , with noticeable peaks around the 30-50 and 60-70 age ranges.
 
@@ -150,27 +149,27 @@ activity_df |>
   facet_wrap(~education) +
   theme_minimal()
 ```
-High School Equivalent:
+High School Equivalent:  
 Females: Showed a generally higher activity level compared to males, with a 
 decrease in total activity after 40 (but a slight increase at 60).
 Males: Maintained a more consistent level of activity over age, but also with a 
 decline in total activity in 40s.
 
-Less than High School:
+Less than High School:  
 The activity levels for both males and females show a decline as age increases, 
 particularly after the age of 60.
 Females: Gradual decline in activity starting from around age 40.
 Males: Initially have slightly higher total activity than females in younger 
 age groups (20-40), but also with sharp drop in total activity after age 60.
 
-More than High School:
+More than High School:  
 Females: Total activity is about steady at an ealier age (20-40), followed by a 
 decline around age 60.
 Males: A little more fluctuations in activity but generally seem to maintain a 
 similar level over a wide age range (20-50), with a noticeable decline after 50.
 
 24 hours activity
-```{r}
+```{r message = FALSE}
 merged_df |>
   group_by(sex, education) |>
   summarise(across(starts_with("min"), mean, na.rm = TRUE)) |>
@@ -186,25 +185,25 @@ The overall pattern for the three education levels all follows a typical daily
 activity curve, with activity rising sharply in the morning (around 5-6 AM), 
 peaking around mid-day, and declining sharply after 8 PM.
 
-High School Equivalent:
+High School Equivalent:  
 Both males and females show similar activity patterns, with peaks in activity 
 occurring between 6 AM and 8 PM. Females have a slightly higher average activity
 level than males throughout the day, particularly during the mid-day hours 
 (10 AM - 4 PM).
 
 
-Less than High School:
+Less than High School:  
 Males have slightly higher activity levels in the morning (before 8-9 AM) than
 females, and females have higher activity levels after 9 AM, but the trends are  
 close. 
 
-More than High School:
+More than High School:  
 There is higher activity in females compared to males throughout the day.
 
 
 ## Problem 3
 
-import the datasets
+import the datasets and combine
 ```{r message = FALSE}
 Jan_20 = 
   read_csv("citibike/Jan 2020 Citi.csv") |>
@@ -221,5 +220,108 @@ Jan_24 =
 Jul_24 = 
   read_csv("citibike/July 2024 Citi.csv") |>
   janitor::clean_names()
+
+citibike_df = 
+  bind_rows(
+  Jan_20 |> 
+    mutate(month = "January", year = 2020),
+  Jan_24 |>
+    mutate(month = "January", year = 2024),
+  Jul_20 |> 
+    mutate(month = "July", year = 2020),
+  Jul_24 |> 
+    mutate(month = "July", year = 2024)
+)
 ```
 
+Create the table
+```{r}
+citibike_df |>
+  group_by(year, month, member_casual) |>
+  summarise(total_rides = n()) |>
+  pivot_wider(names_from = member_casual, values_from = total_rides) |>
+  kable()
+```
+There is a significant increase in both casual and member rides from 2020 to 
+2024.  
+Casual rides more than doubled in both January and July between 2020 and 2024. 
+For example, casual rides in July grew from 5,637 in 2020 to 10,894 in 2024.
+Member rides also saw a significant increase. For example. member rides grew 
+to 36,262 in July 2024, more than double the 15,411 member rides in July 2020.
+
+5 most popular starting stations for July 2024
+```{r}
+citibike_df |>
+  filter(year == 2024, month == "July") |>
+  group_by(start_station_name) |>
+  summarise(num_rides = n()) |>
+  arrange(desc(num_rides)) |>
+  slice_head(n = 5)|>
+  kable()
+```
+
+
+effects of day of the week, month, and year on median ride duration
+```{r}
+citibike_df |>
+   mutate(weekdays = factor(weekdays, 
+                           levels = 
+                             c("Monday", "Tuesday", "Wednesday", 
+                               "Thursday", "Friday", "Saturday", "Sunday"),
+                           ordered = TRUE)) |>
+  group_by(weekdays, month, year) |>
+  summarise(median_duration = median(duration, na.rm = TRUE)) |>
+  ggplot(aes(x = weekdays, y = median_duration, color = as.factor(year))) +
+  geom_line(aes(group = year)) +
+  facet_wrap(~month) +
+  labs(x = "Day of the Week", y = "Median Ride Duration (minutes)") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+```
+Ride durations are generally longer in July compared to January, which aligns 
+with expectations as summer months typically encourage longer rides due to 
+favorable weather (warmer).  
+Both years and both months show that ride durations tend to increase over the 
+weekend (especially Saturdays), which suggests that more people may be using 
+Citi Bikes for leisure rides during the weekends.  
+While both 2020 and 2024 show similar patterns, the median ride duration in 
+2024 is lower than in 2020.  
+
+impact of month, membership status, and bike type on ride duration for 2024
+```{r}
+citibike_df |>
+  filter(year == 2024) |>
+  ggplot(aes(x = duration, fill = rideable_type)) +
+  geom_density(alpha = 0.5) +
+  facet_grid(month ~ member_casual) +
+  labs(x = "Ride Duration (minutes)", y = "Density") +
+  theme_minimal()
+```
+Zoom in for better pattern visualization
+```{r}
+citibike_df |>
+  filter(year == 2024) |>
+  ggplot(aes(x = duration, fill = rideable_type)) +
+  geom_density(alpha = 0.5) +
+  facet_grid(month ~ member_casual) +
+  scale_x_continuous(limits = c(0, 60)) +
+  labs(x = "Ride Duration (minutes)", y = "Density") +
+  theme_minimal()
+```
+
+Casual and Member Riders:  
+Casual riders (left panels) tend to have slightly longer ride durations 
+compared to members (right panels). This can be seen in the broader distribution 
+of ride durations for casual riders. Members show a more concentrated 
+distribution around short ride durations (heavily concentrated below 20 minutes).
+
+Effect of Month:  
+In both January and July, ride durations for members are shorter and more 
+tightly distributed than for casual riders. This trend is consistent across 
+both months. Ride durations appear to be slightly longer in July compared to 
+January, especially for casual riders.
+
+Bike Types:  
+Electric bikes (shown in blue) have a tighter concentration around shorter ride 
+durations for both casual and member riders, suggesting they are typically used 
+for quick trips. Classic bikes (in red) appear to have a slightly broader 
+distribution, especially among casual riders.
