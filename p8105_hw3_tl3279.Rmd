@@ -10,10 +10,12 @@ Load all necessary packages
 library(p8105.datasets)
 library(tidyverse)
 library(patchwork)
+library(ggridges)
 library(dplyr)
 library(lubridate)
 library(readxl)
 library(knitr)
+library(hexbin)
 ```
 
 ## Problem 1
@@ -70,12 +72,31 @@ package. Variables with tenth of a standard units have been divided by 10.
 For snowfall, the most commonly observed value is 0 as snowfall does not occur 
 on most days throughout the year in most locations. 
 
-```{r, include = FALSE}
+Two-panel graph for mean tmax
+```{r}
 ny_noaa_cleaned |>
-  filter(!is.na(tmax), month %in% c(1, 7)) |>
   group_by(id, year, month) |>
-  summarise(mean_tmax = mean(tmax, na.rm = TRUE)) |>
-  head(10)
+  filter(month %in% c(1, 7)) |> 
+  summarize(mean_tmax = mean(tmax, na.rm = TRUE, color = id)) |>
+  ggplot(aes(x = year, y = mean_tmax, group = id)) + geom_point() + geom_path() +
+  facet_grid(~month) +
+  labs(title = "Mean monthly temperature for each station across years for January and July")
+```
+
+Plot for snowfall
+```{r}
+hex = 
+  ny_noaa_cleaned |> 
+  ggplot(aes(x = tmin, y = tmax)) + 
+  geom_hex()
+
+ridge = 
+  ny_noaa_cleaned |> 
+  filter(snow < 100, snow > 0) |>
+  ggplot(aes(x = snow, y = as.factor(year))) + 
+  geom_density_ridges()
+
+hex + ridge
 ```
 
 ## Problem 2
